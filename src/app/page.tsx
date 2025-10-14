@@ -1,14 +1,8 @@
 "use client"
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Camera, Search, Shield, Stethoscope, Brain, Users, Lock, CheckCircle, Upload, FileImage, ArrowLeft, AlertTriangle, Eye, Microscope, Baby, Sparkles, Scissors, MapPin, Clock, Layers, User, Heart, UserCheck, Database, TrendingUp, Calendar, Award } from 'lucide-react'
 import { DISEASES, SPECIALTIES, getAllDiseases, getDiseasesBySpecialty, searchDiseases, validateDiseasesCoverage } from '@/lib/diseases-database'
-
-// Validação do banco de dados
-const validation = validateDiseasesCoverage()
-if (!validation.valid) {
-  console.warn('Doenças não cobertas:', validation.missing)
-}
 
 // Regiões anatômicas para seleção (sem ícones)
 const anatomicalRegions = [
@@ -65,6 +59,9 @@ const specialties = [
   { name: 'Tricologia', color: 'from-teal-500 to-teal-600', icon: Scissors }
 ]
 
+// Data fixa para evitar problemas de hidratação
+const LAST_UPDATE_DATE = '15 Jan 2025'
+
 export default function DermAI() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentView, setCurrentView] = useState('dashboard')
@@ -79,10 +76,22 @@ export default function DermAI() {
   const [selectedFamilyHistory, setSelectedFamilyHistory] = useState([])
   const [selectedContacts, setSelectedContacts] = useState([])
   const [capturedImage, setCapturedImage] = useState(null)
+  const [isClient, setIsClient] = useState(false)
 
   // Refs para inputs de arquivo
   const cameraInputRef = useRef(null)
   const galleryInputRef = useRef(null)
+
+  // Marcar como cliente após hidratação para evitar problemas de SSR
+  useEffect(() => {
+    setIsClient(true)
+    
+    // Validação do banco de dados apenas no cliente
+    const validation = validateDiseasesCoverage()
+    if (!validation.valid) {
+      console.warn('Doenças não cobertas:', validation.missing)
+    }
+  }, [])
 
   // Função para capturar foto (câmera)
   const handleCameraCapture = () => {
@@ -157,185 +166,192 @@ export default function DermAI() {
     </div>
   )
 
-  const Dashboard = () => (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Compacto */}
-      <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="bg-white/20 p-1.5 rounded-full">
-              <Stethoscope className="w-4 h-4" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold">DermAI</h1>
-              <p className="text-blue-200 text-xs">Diagnóstico Dermatológico</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="text-right">
-              <p className="text-xs">Dr. João Silva</p>
-              <p className="text-xs text-blue-200">CRM: 12345-SP</p>
-            </div>
-            <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-              userPlan === 'premium' ? 'bg-yellow-500 text-yellow-900' : 'bg-gray-500 text-white'
-            }`}>
-              {userPlan === 'premium' ? 'PRO' : 'FREE'}
-            </div>
-          </div>
-        </div>
-      </div>
+  const Dashboard = () => {
+    // Valores estáticos para evitar problemas de hidratação
+    const totalDiseases = 144
+    const totalSpecialties = 6
+    const clinicalPrecision = 95
 
-      {/* Main Content Compacto */}
-      <div className="p-3 space-y-4">
-        {/* Indicadores de Confiança */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
-          <div className="flex items-center justify-between mb-3">
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Compacto */}
+        <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Database className="w-5 h-5 text-green-600" />
-              <h2 className="text-lg font-bold text-gray-800">Sistema Atualizado</h2>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Award className="w-4 h-4 text-green-600" />
-              <span className="text-xs font-semibold text-green-700">CERTIFICADO</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{getAllDiseases().length}</div>
-              <div className="text-xs text-gray-600">Doenças Cadastradas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">6</div>
-              <div className="text-xs text-gray-600">Especialidades</div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center space-x-1">
-              <Calendar className="w-3 h-3 text-blue-500" />
-              <span className="text-gray-600">Última atualização: 15/01/2025</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <TrendingUp className="w-3 h-3 text-green-500" />
-              <span className="text-green-600 font-semibold">Atualização Semanal</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pesquisa Compacta */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">Pesquisa de Lesões</h2>
-          <div className="flex items-center space-x-2">
-            <Search className="w-4 h-4 text-gray-400" />
-            <input 
-              type="text" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" 
-              placeholder="Pesquisar lesões, sintomas..."
-            />
-            <button 
-              onClick={() => setCurrentView('diseases')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 text-sm"
-            >
-              Buscar
-            </button>
-          </div>
-        </div>
-
-        {/* Análise de Lesões - Botão Principal Compacto */}
-        <div className="bg-white rounded-xl shadow-md p-4 border-2 border-blue-200">
-          <div className="text-center">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Camera className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-1">Análise de Lesões</h2>
-            <p className="text-gray-600 text-sm mb-4">Função principal do DermAI</p>
-
-            {userPlan === 'premium' ? (
-              <button 
-                onClick={() => setCurrentView('anatomical-regions')}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105"
-              >
-                Iniciar Análise
-              </button>
-            ) : (
-              <div>
-                <div className="flex items-center justify-center space-x-1 mb-2">
-                  <Lock className="w-3 h-3 text-gray-400" />
-                  <span className="text-gray-600 text-xs">Funcionalidade Premium</span>
-                </div>
-                <button 
-                  onClick={() => setCurrentView('upgrade')}
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-3 rounded-lg font-semibold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300"
-                >
-                  Fazer Upgrade
-                </button>
+              <div className="bg-white/20 p-1.5 rounded-full">
+                <Stethoscope className="w-4 h-4" />
               </div>
-            )}
+              <div>
+                <h1 className="text-lg font-bold">DermAI</h1>
+                <p className="text-blue-200 text-xs">Diagnóstico Dermatológico</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="text-right">
+                <p className="text-xs">Dr. João Silva</p>
+                <p className="text-xs text-blue-200">CRM: 12345-SP</p>
+              </div>
+              <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                userPlan === 'premium' ? 'bg-yellow-500 text-yellow-900' : 'bg-gray-500 text-white'
+              }`}>
+                {userPlan === 'premium' ? 'PRO' : 'FREE'}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Especialidades Compactas */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Especialidades</h2>
-            <div className="text-xs text-gray-500">Base científica validada</div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {SPECIALTIES.map((specialty, index) => {
-              const specialtyIcon = specialties.find(s => s.name === specialty.name)
-              const IconComponent = specialtyIcon?.icon || Shield
-              const colorClass = specialtyIcon?.color || 'from-gray-500 to-gray-600'
-              
-              return (
-                <div 
-                  key={specialty.id} 
-                  onClick={() => {
-                    setSelectedSpecialty(specialty.name)
-                    setCurrentView('diseases')
-                  }}
-                  className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <div className={`bg-gradient-to-r ${colorClass} w-8 h-8 rounded-full flex items-center justify-center mb-2`}>
-                    <IconComponent className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800 text-sm">{specialty.name}</h3>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {specialty.diseases.length} doenças
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+        {/* Main Content Compacto */}
+        <div className="p-3 space-y-4">
+          {/* Indicadores de Confiança */}
+          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Database className="w-5 h-5 text-green-600" />
+                <h2 className="text-lg font-bold text-gray-800">Sistema Atualizado</h2>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Award className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-semibold text-green-700">CERTIFICADO</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{totalDiseases}</div>
+                <div className="text-xs text-gray-600">Doenças Cadastradas</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{totalSpecialties}</div>
+                <div className="text-xs text-gray-600">Especialidades</div>
+              </div>
+            </div>
 
-        {/* Stats Profissionais */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-lg p-3 text-center border-l-4 border-blue-500">
-            <div className="text-lg font-bold text-blue-600">{getAllDiseases().length}</div>
-            <div className="text-xs text-gray-600">Doenças Validadas</div>
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-1">
+                <Calendar className="w-3 h-3 text-blue-500" />
+                <span className="text-gray-600">Última atualização: {LAST_UPDATE_DATE}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <TrendingUp className="w-3 h-3 text-green-500" />
+                <span className="text-green-600 font-semibold">Atualização Semanal</span>
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-lg p-3 text-center border-l-4 border-green-500">
-            <div className="text-lg font-bold text-green-600">95%</div>
-            <div className="text-xs text-gray-600">Precisão Clínica</div>
-          </div>
-        </div>
 
-        {/* Selo de Qualidade */}
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-3 border border-green-200">
-          <div className="flex items-center justify-center space-x-2">
-            <CheckCircle className="w-5 h-5 text-green-600" />
+          {/* Pesquisa Compacta */}
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">Pesquisa de Lesões</h2>
+            <div className="flex items-center space-x-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input 
+                type="text" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" 
+                placeholder="Pesquisar lesões, sintomas..."
+              />
+              <button 
+                onClick={() => setCurrentView('diseases')}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 text-sm"
+              >
+                Buscar
+              </button>
+            </div>
+          </div>
+
+          {/* Análise de Lesões - Botão Principal Compacto */}
+          <div className="bg-white rounded-xl shadow-md p-4 border-2 border-blue-200">
             <div className="text-center">
-              <div className="text-sm font-bold text-gray-800">Sistema Médico Certificado</div>
-              <div className="text-xs text-gray-600">Atualização automática semanal • Base científica validada</div>
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800 mb-1">Análise de Lesões</h2>
+              <p className="text-gray-600 text-sm mb-4">Função principal do DermAI</p>
+
+              {userPlan === 'premium' ? (
+                <button 
+                  onClick={() => setCurrentView('anatomical-regions')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105"
+                >
+                  Iniciar Análise
+                </button>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-center space-x-1 mb-2">
+                    <Lock className="w-3 h-3 text-gray-400" />
+                    <span className="text-gray-600 text-xs">Funcionalidade Premium</span>
+                  </div>
+                  <button 
+                    onClick={() => setCurrentView('upgrade')}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-3 rounded-lg font-semibold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300"
+                  >
+                    Fazer Upgrade
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Especialidades Compactas */}
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Especialidades</h2>
+              <div className="text-xs text-gray-500">Base científica validada</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {SPECIALTIES.map((specialty, index) => {
+                const specialtyIcon = specialties.find(s => s.name === specialty.name)
+                const IconComponent = specialtyIcon?.icon || Shield
+                const colorClass = specialtyIcon?.color || 'from-gray-500 to-gray-600'
+                
+                return (
+                  <div 
+                    key={specialty.id} 
+                    onClick={() => {
+                      setSelectedSpecialty(specialty.name)
+                      setCurrentView('diseases')
+                    }}
+                    className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <div className={`bg-gradient-to-r ${colorClass} w-8 h-8 rounded-full flex items-center justify-center mb-2`}>
+                      <IconComponent className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-sm">{specialty.name}</h3>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {specialty.diseases.length} doenças
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Stats Profissionais */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white rounded-lg p-3 text-center border-l-4 border-blue-500">
+              <div className="text-lg font-bold text-blue-600">{totalDiseases}</div>
+              <div className="text-xs text-gray-600">Doenças Validadas</div>
+            </div>
+            <div className="bg-white rounded-lg p-3 text-center border-l-4 border-green-500">
+              <div className="text-lg font-bold text-green-600">{clinicalPrecision}%</div>
+              <div className="text-xs text-gray-600">Precisão Clínica</div>
+            </div>
+          </div>
+
+          {/* Selo de Qualidade */}
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-3 border border-green-200">
+            <div className="flex items-center justify-center space-x-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="text-center">
+                <div className="text-sm font-bold text-gray-800">Sistema Médico Certificado</div>
+                <div className="text-xs text-gray-600">Atualização automática semanal • Base científica validada</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const DiseasesView = () => {
     // Filtrar doenças baseado na especialidade selecionada e termo de busca
@@ -869,6 +885,21 @@ export default function DermAI() {
       </div>
     </div>
   )
+
+  // Renderização condicional para evitar problemas de hidratação
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Stethoscope className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">DermAI</h1>
+          <p className="text-gray-600 text-sm">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isLoggedIn) {
     return <LoginScreen />
