@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Search, Shield, Stethoscope, Brain, Users, Lock, CheckCircle, Upload, FileImage, ArrowLeft, AlertTriangle, Eye, Microscope, Baby, Sparkles, Scissors, MapPin, Clock, Layers, User, Heart, UserCheck, Database, TrendingUp, Calendar, Award } from 'lucide-react'
-import { DISEASES, SPECIALTIES, getAllDiseases, getDiseasesBySpecialty, searchDiseases, validateDiseasesCoverage } from '@/lib/diseases-database'
+import { Camera, Upload, ArrowLeft, AlertTriangle, User, Baby, Heart, LogOut } from 'lucide-react'
 
-// Regiões anatômicas para seleção (sem ícones)
+// Regiões anatômicas simplificadas
 const anatomicalRegions = [
   { id: 'head', name: 'Cabeça' },
   { id: 'face', name: 'Face' },
@@ -22,8 +21,8 @@ const anatomicalRegions = [
   { id: 'mucosas', name: 'Mucosas' }
 ]
 
-// Dados clínicos importantes (sem ícones)
-const clinicalData = [
+// Sintomas expandidos para maior acurácia
+const symptoms = [
   { id: 'fever', name: 'Febre' },
   { id: 'pain', name: 'Dor' },
   { id: 'redness', name: 'Rubor' },
@@ -36,78 +35,71 @@ const clinicalData = [
   { id: 'scaling', name: 'Descamação' }
 ]
 
-// Histórico familiar (sem ícones)
+// Histórico Familiar (sem "Nenhum")
 const familyHistory = [
   { id: 'psoriasis', name: 'Psoríase' },
-  { id: 'hypertension', name: 'HAS' },
-  { id: 'diabetes', name: 'DM2' },
-  { id: 'others', name: 'Outros' }
+  { id: 'dm2', name: 'DM2' },
+  { id: 'has', name: 'HAS' },
+  { id: 'other', name: 'Outros' }
 ]
 
-// Contatos prévios (sem ícones)
+// Contatos Prévios (sem "Nenhum")
 const previousContacts = [
   { id: 'animals', name: 'Animais' },
-  { id: 'chemicals', name: 'Químicos' }
+  { id: 'chemicals', name: 'Produtos Químicos' },
+  { id: 'other', name: 'Outros' }
 ]
 
-const specialties = [
-  { name: 'Dermatologia Geral', color: 'from-blue-500 to-blue-600', icon: Shield },
-  { name: 'Dermatoscopia', color: 'from-purple-500 to-purple-600', icon: Eye },
-  { name: 'Oncologia Cutânea', color: 'from-red-500 to-red-600', icon: Brain },
-  { name: 'Dermatologia Pediátrica', color: 'from-pink-500 to-pink-600', icon: Baby },
-  { name: 'Cosmiatria', color: 'from-indigo-500 to-indigo-600', icon: Sparkles },
-  { name: 'Tricologia', color: 'from-teal-500 to-teal-600', icon: Scissors }
+// Evolução simplificada
+const evolutionOptions = [
+  { value: 'aguda', label: 'Aguda', description: '< 6 sem' },
+  { value: 'subaguda', label: 'Subaguda', description: '6-12 sem' },
+  { value: 'cronica', label: 'Crônica', description: '> 12 sem' },
+  { value: 'recorrente', label: 'Recorrente', description: 'Repetidos' }
 ]
-
-// Data fixa para evitar problemas de hidratação
-const LAST_UPDATE_DATE = '15 Jan 2025'
 
 export default function DermAI() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [currentView, setCurrentView] = useState('dashboard')
-  const [userPlan, setUserPlan] = useState('free') // 'free' or 'premium'
+  const [currentStep, setCurrentStep] = useState(1)
   const [patientType, setPatientType] = useState('')
   const [selectedRegions, setSelectedRegions] = useState([])
   const [evolution, setEvolution] = useState('')
-  const [selectedSpecialty, setSelectedSpecialty] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedDisease, setSelectedDisease] = useState(null)
-  const [selectedClinicalData, setSelectedClinicalData] = useState([])
+  const [selectedSymptoms, setSelectedSymptoms] = useState([])
   const [selectedFamilyHistory, setSelectedFamilyHistory] = useState([])
   const [selectedContacts, setSelectedContacts] = useState([])
+  const [additionalNotes, setAdditionalNotes] = useState('')
   const [capturedImage, setCapturedImage] = useState(null)
-  const [isClient, setIsClient] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState('')
 
-  // Refs para inputs de arquivo
   const cameraInputRef = useRef(null)
   const galleryInputRef = useRef(null)
 
-  // Marcar como cliente após hidratação para evitar problemas de SSR
-  useEffect(() => {
-    setIsClient(true)
-    
-    // Validação do banco de dados apenas no cliente
-    const validation = validateDiseasesCoverage()
-    if (!validation.valid) {
-      console.warn('Doenças não cobertas:', validation.missing)
-    }
-  }, [])
+  const handleLogout = () => {
+    setIsLoggedIn(false)
+    setCurrentStep(1)
+    setPatientType('')
+    setSelectedRegions([])
+    setEvolution('')
+    setSelectedSymptoms([])
+    setSelectedFamilyHistory([])
+    setSelectedContacts([])
+    setAdditionalNotes('')
+    setCapturedImage(null)
+  }
 
-  // Função para capturar foto (câmera)
   const handleCameraCapture = () => {
     if (cameraInputRef.current) {
       cameraInputRef.current.click()
     }
   }
 
-  // Função para selecionar da galeria
   const handleGallerySelect = () => {
     if (galleryInputRef.current) {
       galleryInputRef.current.click()
     }
   }
 
-  // Função para processar arquivo selecionado
   const handleFileSelect = (event, source) => {
     const file = event.target.files[0]
     if (file) {
@@ -116,807 +108,509 @@ export default function DermAI() {
         setCapturedImage({
           src: e.target.result,
           name: file.name,
-          source: source
+          source: source,
+          file: file
         })
       }
       reader.readAsDataURL(file)
     }
   }
 
+  const handleAnalyze = async () => {
+    if (!patientType || !capturedImage) {
+      setAnalysisError('Selecione o tipo de paciente e adicione uma imagem.')
+      return
+    }
+
+    setIsAnalyzing(true)
+    setAnalysisError('')
+
+    try {
+      const imageUrl = capturedImage.src
+
+      const clinicalFormData = {
+        patientType,
+        anatomicalRegions: selectedRegions,
+        evolution,
+        symptoms: selectedSymptoms,
+        familyHistory: selectedFamilyHistory,
+        previousContacts: selectedContacts,
+        additionalNotes,
+        imageUrl
+      }
+
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          clinicalData: clinicalFormData,
+          imageUrl
+        })
+      })
+
+      // Verificar se a resposta é JSON
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Resposta inválida do servidor. Tente novamente.')
+      }
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao processar análise')
+      }
+
+      // Validar se recebemos os dados esperados
+      if (!data.clinicalNarrative || !data.caseSummary) {
+        throw new Error('Resposta incompleta do servidor')
+      }
+
+      sessionStorage.setItem('analysisResult', JSON.stringify(data))
+      window.location.href = '/resultado'
+
+    } catch (error) {
+      console.error('Erro na análise:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao processar análise. Tente novamente.'
+      setAnalysisError(errorMessage)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
   const LoginScreen = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Stethoscope className="w-6 h-6 text-white" />
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">DermAI</h1>
-          <p className="text-gray-600 text-sm">IA para Dermatologia</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">DermAI</h1>
+          <p className="text-gray-600">Análise Rápida de Lesões</p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CRM</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">CRM</label>
             <input 
               type="text" 
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Digite seu CRM"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
             <input 
               type="password" 
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Digite sua senha"
             />
           </div>
           <button 
             onClick={() => setIsLoggedIn(true)}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 text-sm"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300"
           >
             Entrar
           </button>
-        </div>
-
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-600">Não tem conta? <span className="text-blue-600 font-semibold cursor-pointer">Cadastre-se</span></p>
         </div>
       </div>
     </div>
   )
 
-  const Dashboard = () => {
-    // Valores estáticos para evitar problemas de hidratação
-    const totalDiseases = 144
-    const totalSpecialties = 6
-    const clinicalPrecision = 95
-
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header Compacto */}
-        <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="bg-white/20 p-1.5 rounded-full">
-                <Stethoscope className="w-4 h-4" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold">DermAI</h1>
-                <p className="text-blue-200 text-xs">Diagnóstico Dermatológico</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="text-right">
-                <p className="text-xs">Dr. João Silva</p>
-                <p className="text-xs text-blue-200">CRM: 12345-SP</p>
-              </div>
-              <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                userPlan === 'premium' ? 'bg-yellow-500 text-yellow-900' : 'bg-gray-500 text-white'
-              }`}>
-                {userPlan === 'premium' ? 'PRO' : 'FREE'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content Compacto */}
-        <div className="p-3 space-y-4">
-          {/* Indicadores de Confiança */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Database className="w-5 h-5 text-green-600" />
-                <h2 className="text-lg font-bold text-gray-800">Sistema Atualizado</h2>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Award className="w-4 h-4 text-green-600" />
-                <span className="text-xs font-semibold text-green-700">CERTIFICADO</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{totalDiseases}</div>
-                <div className="text-xs text-gray-600">Doenças Cadastradas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{totalSpecialties}</div>
-                <div className="text-xs text-gray-600">Especialidades</div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-3 h-3 text-blue-500" />
-                <span className="text-gray-600">Última atualização: {LAST_UPDATE_DATE}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <TrendingUp className="w-3 h-3 text-green-500" />
-                <span className="text-green-600 font-semibold">Atualização Semanal</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Pesquisa Compacta */}
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <h2 className="text-lg font-bold text-gray-800 mb-3">Pesquisa de Lesões</h2>
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-gray-400" />
-              <input 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" 
-                placeholder="Pesquisar lesões, sintomas..."
-              />
-              <button 
-                onClick={() => setCurrentView('diseases')}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 text-sm"
+  const MainScreen = () => (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Minimalista */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 shadow-lg">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center space-x-3">
+            {currentStep > 1 && (
+              <button
+                onClick={() => setCurrentStep(currentStep - 1)}
+                className="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition-colors"
               >
-                Buscar
+                <ArrowLeft className="w-5 h-5" />
               </button>
+            )}
+            <div>
+              <h1 className="text-xl font-bold">DermAI</h1>
+              <p className="text-blue-100 text-sm">Passo {currentStep} de 6</p>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
 
-          {/* Análise de Lesões - Botão Principal Compacto */}
-          <div className="bg-white rounded-xl shadow-md p-4 border-2 border-blue-200">
-            <div className="text-center">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Camera className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-1">Análise de Lesões</h2>
-              <p className="text-gray-600 text-sm mb-4">Função principal do DermAI</p>
-
-              {userPlan === 'premium' ? (
-                <button 
-                  onClick={() => setCurrentView('anatomical-regions')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105"
-                >
-                  Iniciar Análise
-                </button>
-              ) : (
-                <div>
-                  <div className="flex items-center justify-center space-x-1 mb-2">
-                    <Lock className="w-3 h-3 text-gray-400" />
-                    <span className="text-gray-600 text-xs">Funcionalidade Premium</span>
-                  </div>
-                  <button 
-                    onClick={() => setCurrentView('upgrade')}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-3 rounded-lg font-semibold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300"
+      {/* Conteúdo Principal */}
+      <div className="max-w-2xl mx-auto p-4">
+        {/* PASSO 1 - TIPO DE PACIENTE + LOCALIZAÇÃO DA LESÃO */}
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            {/* Tipo de Paciente */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Tipo de Paciente</h2>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { value: 'adult', label: 'Adulto', icon: User },
+                  { value: 'pediatric', label: 'Pediátrico', icon: Baby },
+                  { value: 'pregnant', label: 'Gestante', icon: Heart }
+                ].map((type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => setPatientType(type.value)}
+                    className={`p-3 rounded-lg border-2 transition-all duration-300 flex flex-col items-center ${
+                      patientType === type.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
                   >
-                    Fazer Upgrade
+                    <type.icon className="w-6 h-6 mb-1" />
+                    <span className="font-medium text-sm">{type.label}</span>
                   </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Localização da Lesão */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Localização da Lesão</h2>
+              <p className="text-sm text-gray-600 mb-4">Selecione uma ou mais áreas afetadas</p>
+              <div className="grid grid-cols-3 gap-3">
+                {anatomicalRegions.map((region) => (
+                  <button
+                    key={region.id}
+                    onClick={() => {
+                      setSelectedRegions(prev => 
+                        prev.includes(region.id) 
+                          ? prev.filter(id => id !== region.id)
+                          : [...prev, region.id]
+                      )
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all font-semibold ${
+                      selectedRegions.includes(region.id)
+                        ? 'border-blue-600 bg-blue-100 text-blue-800 shadow-md'
+                        : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
+                  >
+                    {region.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setCurrentStep(2)}
+              disabled={!patientType || selectedRegions.length === 0}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
+                patientType && selectedRegions.length > 0
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {/* PASSO 2 - SINTOMAS */}
+        {currentStep === 2 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Sintomas</h2>
+              <p className="text-sm text-gray-600 mb-4">Selecione os sintomas presentes (opcional)</p>
+              <div className="grid grid-cols-2 gap-3">
+                {symptoms.map((symptom) => (
+                  <button
+                    key={symptom.id}
+                    onClick={() => {
+                      setSelectedSymptoms(prev => 
+                        prev.includes(symptom.id) 
+                          ? prev.filter(id => id !== symptom.id)
+                          : [...prev, symptom.id]
+                      )
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all font-semibold ${
+                      selectedSymptoms.includes(symptom.id)
+                        ? 'border-green-600 bg-green-100 text-green-800 shadow-md'
+                        : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                    }`}
+                  >
+                    {symptom.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setCurrentStep(3)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {/* PASSO 3 - EVOLUÇÃO DA LESÃO */}
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-orange-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Evolução da Lesão</h2>
+              <p className="text-sm text-gray-600 mb-4">Selecione o tempo de evolução</p>
+              <div className="grid grid-cols-2 gap-4">
+                {evolutionOptions.map((evo) => (
+                  <button
+                    key={evo.value}
+                    onClick={() => setEvolution(evo.value)}
+                    className={`p-5 rounded-lg border-2 transition-all ${
+                      evolution === evo.value
+                        ? 'border-orange-600 bg-orange-100 text-orange-800 shadow-md'
+                        : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50'
+                    }`}
+                  >
+                    <div className="font-bold text-lg">{evo.label}</div>
+                    <div className="text-sm mt-1">{evo.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setCurrentStep(4)}
+              disabled={!evolution}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
+                evolution
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {/* PASSO 4 - HISTÓRICO FAMILIAR */}
+        {currentStep === 4 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h2 className="text-base font-semibold text-gray-700 mb-2">Histórico Familiar</h2>
+              <p className="text-xs text-gray-500 mb-3">Dados complementares (opcional)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {familyHistory.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedFamilyHistory(prev => 
+                        prev.includes(item.id) 
+                          ? prev.filter(id => id !== item.id)
+                          : [...prev, item.id]
+                      )
+                    }}
+                    className={`p-2.5 rounded-lg border transition-all text-sm font-medium ${
+                      selectedFamilyHistory.includes(item.id)
+                        ? 'border-purple-400 bg-purple-50 text-purple-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setCurrentStep(5)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {/* PASSO 5 - CONTATOS PRÉVIOS */}
+        {currentStep === 5 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h2 className="text-base font-semibold text-gray-700 mb-2">Contatos Prévios</h2>
+              <p className="text-xs text-gray-500 mb-3">Exposições relevantes (opcional)</p>
+              <div className="grid grid-cols-2 gap-2">
+                {previousContacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => {
+                      setSelectedContacts(prev => 
+                        prev.includes(contact.id) 
+                          ? prev.filter(id => id !== contact.id)
+                          : [...prev, contact.id]
+                      )
+                    }}
+                    className={`p-2.5 rounded-lg border transition-all text-sm font-medium ${
+                      selectedContacts.includes(contact.id)
+                        ? 'border-teal-400 bg-teal-50 text-teal-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {contact.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h2 className="text-base font-semibold text-gray-700 mb-3">Observações Adicionais</h2>
+              <textarea
+                value={additionalNotes}
+                onChange={(e) => setAdditionalNotes(e.target.value)}
+                placeholder="Adicione informações relevantes (opcional)..."
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows={3}
+              />
+            </div>
+
+            <button 
+              onClick={() => setCurrentStep(6)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
+        {/* PASSO 6 - FOTO DA LESÃO */}
+        {currentStep === 6 && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-2">Foto da Lesão</h2>
+              <p className="text-sm text-gray-600 mb-4">A imagem é obrigatória para melhor acurácia da análise</p>
+              
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => handleFileSelect(e, 'camera')}
+                className="hidden"
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleFileSelect(e, 'gallery')}
+                className="hidden"
+              />
+
+              {capturedImage ? (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <img 
+                      src={capturedImage.src} 
+                      alt="Lesão" 
+                      className="w-full h-64 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                    <button
+                      onClick={() => setCapturedImage(null)}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleCameraCapture}
+                      className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                    >
+                      📷 Nova Foto
+                    </button>
+                    <button 
+                      onClick={handleGallerySelect}
+                      className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-all"
+                    >
+                      📁 Galeria
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <div className="flex justify-center space-x-3 mb-3">
+                    <Camera className="w-8 h-8 text-gray-400" />
+                    <Upload className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-600 mb-4">Adicionar foto da lesão</p>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleCameraCapture}
+                      className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                    >
+                      📷 Câmera
+                    </button>
+                    <button 
+                      onClick={handleGallerySelect}
+                      className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition-all"
+                    >
+                      📁 Galeria
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Especialidades Compactas */}
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Especialidades</h2>
-              <div className="text-xs text-gray-500">Base científica validada</div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {SPECIALTIES.map((specialty, index) => {
-                const specialtyIcon = specialties.find(s => s.name === specialty.name)
-                const IconComponent = specialtyIcon?.icon || Shield
-                const colorClass = specialtyIcon?.color || 'from-gray-500 to-gray-600'
-                
-                return (
-                  <div 
-                    key={specialty.id} 
-                    onClick={() => {
-                      setSelectedSpecialty(specialty.name)
-                      setCurrentView('diseases')
-                    }}
-                    className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors cursor-pointer"
-                  >
-                    <div className={`bg-gradient-to-r ${colorClass} w-8 h-8 rounded-full flex items-center justify-center mb-2`}>
-                      <IconComponent className="w-4 h-4 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-gray-800 text-sm">{specialty.name}</h3>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {specialty.diseases.length} doenças
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Stats Profissionais */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg p-3 text-center border-l-4 border-blue-500">
-              <div className="text-lg font-bold text-blue-600">{totalDiseases}</div>
-              <div className="text-xs text-gray-600">Doenças Validadas</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 text-center border-l-4 border-green-500">
-              <div className="text-lg font-bold text-green-600">{clinicalPrecision}%</div>
-              <div className="text-xs text-gray-600">Precisão Clínica</div>
-            </div>
-          </div>
-
-          {/* Selo de Qualidade */}
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-3 border border-green-200">
-            <div className="flex items-center justify-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div className="text-center">
-                <div className="text-sm font-bold text-gray-800">Sistema Médico Certificado</div>
-                <div className="text-xs text-gray-600">Atualização automática semanal • Base científica validada</div>
+            {/* Erro */}
+            {analysisError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+                <div className="flex items-start">
+                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 mr-2" />
+                  <p className="text-red-700 text-sm">{analysisError}</p>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+            )}
 
-  const DiseasesView = () => {
-    // Filtrar doenças baseado na especialidade selecionada e termo de busca
-    const filteredDiseases = DISEASES.filter(disease => {
-      const matchesSearch = !searchTerm || 
-        disease.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesSpecialty = !selectedSpecialty || 
-        disease.specialties.includes(selectedSpecialty.toLowerCase().replace(/\s+/g, '-'))
-      return matchesSearch && matchesSpecialty
-    })
-
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-          <div className="flex items-center space-x-2">
-            <button onClick={() => setCurrentView('dashboard')} className="text-white hover:text-blue-200">
-              <ArrowLeft className="w-4 h-4" />
+            {/* Botão Analisar */}
+            <button 
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || !capturedImage}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
+                capturedImage && !isAnalyzing
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isAnalyzing ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Analisando...
+                </span>
+              ) : (
+                '🧠 Analisar com IA'
+              )}
             </button>
-            <h1 className="text-lg font-bold">
-              {selectedSpecialty ? `${selectedSpecialty}` : 'Todas as Doenças'}
-            </h1>
-          </div>
-        </div>
 
-        <div className="p-3">
-          {/* Filtros Compactos */}
-          <div className="bg-white rounded-xl shadow-md p-3 mb-4">
-            <div className="flex flex-col gap-2">
-              <input 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" 
-                placeholder="Pesquisar doenças..."
-              />
-              <select 
-                value={selectedSpecialty}
-                onChange={(e) => setSelectedSpecialty(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              >
-                <option value="">Todas as Especialidades</option>
-                {SPECIALTIES.map(specialty => (
-                  <option key={specialty.id} value={specialty.name}>{specialty.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Lista de Doenças Compacta */}
-          <div className="space-y-3">
-            {filteredDiseases.map(disease => (
-              <div 
-                key={disease.id} 
-                onClick={() => {
-                  setSelectedDisease(disease)
-                  setCurrentView('disease-detail')
-                }}
-                className="bg-white rounded-xl shadow-md p-3 cursor-pointer hover:shadow-lg transition-all duration-300"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-sm font-bold text-gray-800">{disease.name}</h3>
-                </div>
-                
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {disease.specialties.slice(0, 2).map(specialtyId => {
-                    const specialty = SPECIALTIES.find(s => s.id === specialtyId)
-                    return specialty ? (
-                      <span key={specialtyId} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-                        {specialty.name.split(' ')[0]}
-                      </span>
-                    ) : null
-                  })}
-                  {disease.specialties.length > 2 && (
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-                      +{disease.specialties.length - 2}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredDiseases.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Nenhuma doença encontrada</p>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  const DiseaseDetailView = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setCurrentView('diseases')} className="text-white hover:text-blue-200">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <h1 className="text-lg font-bold">{selectedDisease?.name}</h1>
-        </div>
-      </div>
-
-      <div className="p-3 space-y-4">
-        {selectedDisease && (
-          <>
-            {/* Informações Básicas Compactas */}
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">{selectedDisease.name}</h2>
-              
-              <div className="mb-3">
-                <h3 className="font-semibold text-gray-700 mb-1 text-sm">Especialidades:</h3>
-                <div className="flex flex-wrap gap-1">
-                  {selectedDisease.specialties.map(specialtyId => {
-                    const specialty = SPECIALTIES.find(s => s.id === specialtyId)
-                    return specialty ? (
-                      <span key={specialtyId} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                        {specialty.name}
-                      </span>
-                    ) : null
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-1 text-sm">ID da Doença:</h3>
-                <p className="text-gray-700 text-sm leading-relaxed">{selectedDisease.id}</p>
+            {/* Disclaimer */}
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
+              <div className="flex items-start">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+                <p className="text-yellow-800 text-xs">
+                  Ferramenta de apoio à decisão clínica. A decisão final cabe ao profissional responsável.
+                </p>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
   )
 
-  const AnatomicalRegionsView = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setCurrentView('dashboard')} className="text-white hover:text-blue-200">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <h1 className="text-lg font-bold">Regiões Anatômicas</h1>
-        </div>
-      </div>
-
-      <div className="p-3">
-        <div className="bg-white rounded-xl shadow-md p-4 mb-4">
-          <h2 className="text-lg font-bold text-gray-800 mb-2">Selecione as Regiões Afetadas</h2>
-          <p className="text-gray-600 text-sm mb-4">Escolha uma ou mais regiões onde as lesões estão localizadas.</p>
-          
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {anatomicalRegions.map((region) => (
-              <button
-                key={region.id}
-                onClick={() => {
-                  setSelectedRegions(prev => 
-                    prev.includes(region.id) 
-                      ? prev.filter(id => id !== region.id)
-                      : [...prev, region.id]
-                  )
-                }}
-                className={`p-2 rounded-lg border-2 transition-all duration-300 text-center ${
-                  selectedRegions.includes(region.id)
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="font-semibold text-xs">{region.name}</div>
-                {selectedRegions.includes(region.id) && (
-                  <div className="mt-1">
-                    <CheckCircle className="w-3 h-3 text-blue-500 mx-auto" />
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Evolução Compacta */}
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">Evolução da Lesão</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: 'aguda', label: 'Aguda', description: '< 6 sem' },
-                { value: 'subaguda', label: 'Subaguda', description: '6-12 sem' },
-                { value: 'cronica', label: 'Crônica', description: '> 12 sem' },
-                { value: 'recorrente', label: 'Recorrente', description: 'Repetidos' }
-              ].map((evo) => (
-                <button
-                  key={evo.value}
-                  onClick={() => setEvolution(evo.value)}
-                  className={`p-2 rounded-lg border-2 transition-all duration-300 text-center ${
-                    evolution === evo.value
-                      ? 'border-orange-500 bg-orange-50 text-orange-700'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-semibold text-xs">{evo.label}</div>
-                  <div className="text-xs text-gray-600">{evo.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Regiões Selecionadas */}
-          {selectedRegions.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Selecionadas:</h3>
-              <div className="flex flex-wrap gap-1">
-                {selectedRegions.map(regionId => {
-                  const region = anatomicalRegions.find(r => r.id === regionId)
-                  return (
-                    <span key={regionId} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center">
-                      {region.name}
-                      <button
-                        onClick={() => setSelectedRegions(prev => prev.filter(id => id !== regionId))}
-                        className="ml-1 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Botão Continuar */}
-          <button 
-            onClick={() => setCurrentView('clinical-data')}
-            disabled={selectedRegions.length === 0 || !evolution}
-            className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
-              selectedRegions.length > 0 && evolution
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Continuar para Dados Clínicos
-          </button>
-
-          {(selectedRegions.length === 0 || !evolution) && (
-            <p className="text-center text-gray-500 text-xs mt-2">
-              Selecione pelo menos uma região e a evolução
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
-  const ClinicalDataView = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-blue-800 to-blue-900 text-white p-3">
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setCurrentView('anatomical-regions')} className="text-white hover:text-blue-200">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <h1 className="text-lg font-bold">Dados Clínicos</h1>
-        </div>
-      </div>
-
-      <div className="p-3 space-y-4">
-        {/* Tipo de Paciente Compacto */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-            <UserCheck className="w-4 h-4 mr-1 text-blue-600" />
-            Tipo de Paciente <span className="text-red-500 ml-1">*</span>
-          </h2>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { value: 'adult', label: 'Adulto', icon: User },
-              { value: 'pediatric', label: 'Pediátrico', icon: Baby },
-              { value: 'pregnant', label: 'Gestante', icon: Heart }
-            ].map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setPatientType(type.value)}
-                className={`p-2 rounded-lg border-2 transition-all duration-300 flex flex-col items-center ${
-                  patientType === type.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <type.icon className="w-5 h-5 mb-1" />
-                <span className="font-medium text-xs">{type.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Dados Clínicos Importantes */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Dados Clínicos Importantes</h2>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {clinicalData.map((data) => (
-              <button
-                key={data.id}
-                onClick={() => {
-                  setSelectedClinicalData(prev => 
-                    prev.includes(data.id) 
-                      ? prev.filter(id => id !== data.id)
-                      : [...prev, data.id]
-                  )
-                }}
-                className={`p-2 rounded-lg border-2 transition-all duration-300 text-center ${
-                  selectedClinicalData.includes(data.id)
-                    ? 'border-green-500 bg-green-50 text-green-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium text-xs">{data.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Histórico Familiar */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Histórico Familiar</h2>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {familyHistory.map((history) => (
-              <button
-                key={history.id}
-                onClick={() => {
-                  setSelectedFamilyHistory(prev => 
-                    prev.includes(history.id) 
-                      ? prev.filter(id => id !== history.id)
-                      : [...prev, history.id]
-                  )
-                }}
-                className={`p-2 rounded-lg border-2 transition-all duration-300 text-center ${
-                  selectedFamilyHistory.includes(history.id)
-                    ? 'border-purple-500 bg-purple-50 text-purple-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium text-xs">{history.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Contatos Prévios */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Contatos Prévios</h2>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {previousContacts.map((contact) => (
-              <button
-                key={contact.id}
-                onClick={() => {
-                  setSelectedContacts(prev => 
-                    prev.includes(contact.id) 
-                      ? prev.filter(id => id !== contact.id)
-                      : [...prev, contact.id]
-                  )
-                }}
-                className={`p-2 rounded-lg border-2 transition-all duration-300 text-center ${
-                  selectedContacts.includes(contact.id)
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium text-xs">{contact.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Upload de Imagem com Funcionalidade Mobile */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">Imagem da Lesão</h2>
-          
-          {/* Inputs ocultos para captura */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => handleFileSelect(e, 'camera')}
-            className="hidden"
-          />
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            onChange={(e) => handleFileSelect(e, 'gallery')}
-            className="hidden"
-          />
-
-          {capturedImage ? (
-            /* Preview da imagem capturada */
-            <div className="space-y-3">
-              <div className="relative">
-                <img 
-                  src={capturedImage.src} 
-                  alt="Lesão capturada" 
-                  className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
-                />
-                <button
-                  onClick={() => setCapturedImage(null)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-1">
-                  <strong>Fonte:</strong> {capturedImage.source === 'camera' ? 'Câmera' : 'Galeria'}
-                </p>
-                <p className="text-xs text-gray-500">{capturedImage.name}</p>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleCameraCapture}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg font-semibold text-xs hover:from-blue-700 hover:to-blue-800 transition-all duration-300"
-                >
-                  📷 Nova Foto
-                </button>
-                <button 
-                  onClick={handleGallerySelect}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg font-semibold text-xs hover:from-green-700 hover:to-green-800 transition-all duration-300"
-                >
-                  📁 Trocar
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Interface de captura inicial */
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-              <div className="flex justify-center space-x-2 mb-2">
-                <Camera className="w-6 h-6 text-gray-400" />
-                <Upload className="w-6 h-6 text-gray-400" />
-              </div>
-              <p className="text-sm font-semibold text-gray-700 mb-1">Adicionar Imagem</p>
-              <p className="text-gray-500 text-xs mb-3">Tire uma foto ou selecione da galeria</p>
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleCameraCapture}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-2 rounded-lg font-semibold text-xs hover:from-blue-700 hover:to-blue-800 transition-all duration-300"
-                >
-                  📷 Foto
-                </button>
-                <button 
-                  onClick={handleGallerySelect}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-3 py-2 rounded-lg font-semibold text-xs hover:from-green-700 hover:to-green-800 transition-all duration-300"
-                >
-                  📁 Galeria
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Botão de Análise */}
-        <div className="bg-white rounded-xl shadow-md p-4">
-          {userPlan === 'premium' ? (
-            <button 
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-lg font-bold hover:from-purple-700 hover:to-purple-800 transition-all duration-300"
-              disabled={!patientType}
-            >
-              🧠 Analisar com IA
-            </button>
-          ) : (
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-1 mb-2">
-                <Lock className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-xs">Premium Bloqueado</span>
-              </div>
-              <button 
-                onClick={() => setCurrentView('upgrade')}
-                className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-3 rounded-lg font-bold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300"
-              >
-                Upgrade Premium
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
-  const UpgradeView = () => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-3">
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setCurrentView('dashboard')} className="text-white hover:text-yellow-200">
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <h1 className="text-lg font-bold">Upgrade Premium</h1>
-        </div>
-      </div>
-
-      <div className="p-3">
-        <div className="bg-white rounded-xl shadow-md p-6 text-center">
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Brain className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">DermAI Premium</h2>
-          <p className="text-gray-600 text-sm mb-6">Desbloqueie o poder da IA para diagnósticos precisos</p>
-          
-          <div className="text-left space-y-3 mb-6">
-            {[
-              'Análise de lesões com IA avançada',
-              'Hipóteses diagnósticas precisas',
-              'Análises ilimitadas',
-              'Relatórios detalhados',
-              'Suporte prioritário 24/7'
-            ].map((feature, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-sm">{feature}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-4 rounded-lg mb-4">
-            <div className="text-3xl font-bold mb-1">R$ 99,90</div>
-            <div className="text-yellow-100 text-sm">por mês</div>
-          </div>
-
-          <button 
-            onClick={() => {
-              setUserPlan('premium')
-              setCurrentView('dashboard')
-            }}
-            className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-white py-3 rounded-lg font-bold hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300"
-          >
-            Assinar Premium
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
-  // Renderização condicional para evitar problemas de hidratação
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Stethoscope className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">DermAI</h1>
-          <p className="text-gray-600 text-sm">Carregando...</p>
-        </div>
-      </div>
-    )
-  }
-
   if (!isLoggedIn) {
     return <LoginScreen />
   }
 
-  switch (currentView) {
-    case 'anatomical-regions':
-      return <AnatomicalRegionsView />
-    case 'clinical-data':
-      return <ClinicalDataView />
-    case 'upgrade':
-      return <UpgradeView />
-    case 'diseases':
-      return <DiseasesView />
-    case 'disease-detail':
-      return <DiseaseDetailView />
-    default:
-      return <Dashboard />
-  }
+  return <MainScreen />
 }
