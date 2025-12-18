@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Upload, ArrowLeft, AlertTriangle, User, Baby, Heart, LogOut } from 'lucide-react'
+import { Camera, Upload, ArrowLeft, AlertTriangle, User, Baby, Heart, LogOut, CheckCircle, TrendingUp, Shield, Zap, Home } from 'lucide-react'
 
 // Regiões anatômicas simplificadas
 const anatomicalRegions = [
@@ -60,6 +60,7 @@ const evolutionOptions = [
 
 export default function DermAI() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
   const [patientType, setPatientType] = useState('')
   const [selectedRegions, setSelectedRegions] = useState([])
@@ -77,6 +78,7 @@ export default function DermAI() {
 
   const handleLogout = () => {
     setIsLoggedIn(false)
+    setShowWelcome(true)
     setCurrentStep(1)
     setPatientType('')
     setSelectedRegions([])
@@ -86,6 +88,20 @@ export default function DermAI() {
     setSelectedContacts([])
     setAdditionalNotes('')
     setCapturedImage(null)
+  }
+
+  const handleBackToHome = () => {
+    setShowWelcome(true)
+    setCurrentStep(1)
+    setPatientType('')
+    setSelectedRegions([])
+    setEvolution('')
+    setSelectedSymptoms([])
+    setSelectedFamilyHistory([])
+    setSelectedContacts([])
+    setAdditionalNotes('')
+    setCapturedImage(null)
+    setAnalysisError('')
   }
 
   const handleCameraCapture = () => {
@@ -220,6 +236,112 @@ export default function DermAI() {
     </div>
   )
 
+  const WelcomeScreen = () => (
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl">
+            <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-5xl font-bold text-white mb-4">DermAI</h1>
+          <p className="text-xl text-blue-100">Análise Inteligente de Lesões Dermatológicas</p>
+        </div>
+
+        {/* Funcionalidades */}
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/20 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <Zap className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Análise Rápida</h3>
+            <p className="text-blue-100 text-sm">Resultados em segundos com tecnologia de IA avançada</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/20 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <Shield className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Confiável</h3>
+            <p className="text-blue-100 text-sm">Baseado em evidências científicas e guidelines atualizados</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/20 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-7 h-7 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Completo</h3>
+            <p className="text-blue-100 text-sm">Hipóteses diagnósticas, diferenciais e condutas sugeridas</p>
+          </div>
+        </div>
+
+        {/* Estatísticas */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 mb-8">
+          <div className="grid grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-4xl font-bold text-white mb-2">1.247</div>
+              <div className="text-blue-100 text-sm">Análises Realizadas</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-white mb-2">98%</div>
+              <div className="text-blue-100 text-sm">Precisão Diagnóstica</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold text-white mb-2">24/7</div>
+              <div className="text-blue-100 text-sm">Disponibilidade</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Como Funciona */}
+        <div className="bg-white rounded-2xl p-8 mb-8 shadow-2xl">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Como Funciona</h2>
+          <div className="grid md:grid-cols-6 gap-4">
+            {[
+              { step: '1', title: 'Tipo & Local', desc: 'Paciente e localização' },
+              { step: '2', title: 'Sintomas', desc: 'Manifestações clínicas' },
+              { step: '3', title: 'Evolução', desc: 'Tempo de progressão' },
+              { step: '4', title: 'Histórico', desc: 'Antecedentes familiares' },
+              { step: '5', title: 'Contatos', desc: 'Exposições relevantes' },
+              { step: '6', title: 'Análise', desc: 'Foto e resultado IA' }
+            ].map((item, index) => (
+              <div key={index} className="text-center">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+                  {item.step}
+                </div>
+                <h4 className="font-semibold text-gray-800 text-sm mb-1">{item.title}</h4>
+                <p className="text-gray-600 text-xs">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Botão Iniciar */}
+        <div className="text-center">
+          <button
+            onClick={() => setShowWelcome(false)}
+            className="bg-white text-blue-700 px-12 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:scale-105"
+          >
+            Iniciar Nova Análise
+          </button>
+          <p className="text-blue-100 text-sm mt-4">Ferramenta de apoio à decisão clínica</p>
+        </div>
+
+        {/* Botão Logout */}
+        <div className="text-center mt-6">
+          <button
+            onClick={handleLogout}
+            className="text-white/80 hover:text-white text-sm underline"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
   const MainScreen = () => (
     <div className="min-h-screen bg-gray-50">
       {/* Header Minimalista */}
@@ -305,17 +427,27 @@ export default function DermAI() {
               </div>
             </div>
 
-            <button 
-              onClick={() => setCurrentStep(2)}
-              disabled={!patientType || selectedRegions.length === 0}
-              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
-                patientType && selectedRegions.length > 0
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Continuar
-            </button>
+            {/* Navegação */}
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Voltar para Início
+              </button>
+              <button 
+                onClick={() => setCurrentStep(2)}
+                disabled={!patientType || selectedRegions.length === 0}
+                className={`flex-1 py-4 rounded-lg font-bold text-lg transition-all ${
+                  patientType && selectedRegions.length > 0
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         )}
 
@@ -348,12 +480,21 @@ export default function DermAI() {
               </div>
             </div>
 
-            <button 
-              onClick={() => setCurrentStep(3)}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
-            >
-              Continuar
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Início
+              </button>
+              <button 
+                onClick={() => setCurrentStep(3)}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         )}
 
@@ -381,17 +522,26 @@ export default function DermAI() {
               </div>
             </div>
 
-            <button 
-              onClick={() => setCurrentStep(4)}
-              disabled={!evolution}
-              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
-                evolution
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Continuar
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Início
+              </button>
+              <button 
+                onClick={() => setCurrentStep(4)}
+                disabled={!evolution}
+                className={`flex-1 py-4 rounded-lg font-bold text-lg transition-all ${
+                  evolution
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         )}
 
@@ -424,12 +574,21 @@ export default function DermAI() {
               </div>
             </div>
 
-            <button 
-              onClick={() => setCurrentStep(5)}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
-            >
-              Continuar
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Início
+              </button>
+              <button 
+                onClick={() => setCurrentStep(5)}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         )}
 
@@ -473,12 +632,21 @@ export default function DermAI() {
               />
             </div>
 
-            <button 
-              onClick={() => setCurrentStep(6)}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
-            >
-              Continuar
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Início
+              </button>
+              <button 
+                onClick={() => setCurrentStep(6)}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         )}
 
@@ -570,28 +738,37 @@ export default function DermAI() {
               </div>
             )}
 
-            {/* Botão Analisar */}
-            <button 
-              onClick={handleAnalyze}
-              disabled={isAnalyzing || !capturedImage}
-              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
-                capturedImage && !isAnalyzing
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {isAnalyzing ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Analisando...
-                </span>
-              ) : (
-                '🧠 Analisar com IA'
-              )}
-            </button>
+            {/* Navegação */}
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBackToHome}
+                className="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold text-lg transition-all bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <Home className="w-5 h-5" />
+                Início
+              </button>
+              <button 
+                onClick={handleAnalyze}
+                disabled={isAnalyzing || !capturedImage}
+                className={`flex-1 py-4 rounded-lg font-bold text-lg transition-all ${
+                  capturedImage && !isAnalyzing
+                    ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isAnalyzing ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Analisando...
+                  </span>
+                ) : (
+                  '🧠 Analisar com IA'
+                )}
+              </button>
+            </div>
 
             {/* Disclaimer */}
             <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
@@ -610,6 +787,10 @@ export default function DermAI() {
 
   if (!isLoggedIn) {
     return <LoginScreen />
+  }
+
+  if (showWelcome) {
+    return <WelcomeScreen />
   }
 
   return <MainScreen />
